@@ -19,7 +19,8 @@ import pandas as pd
 from backbones import BACKBONES, output_root
 from analyze_dinov2 import COLORS, ROOT
 
-KEYS = sys.argv[1:] or ["dinov2_vits14", "eva02_large", "siglip2_so400m", "siglip2_giant", "pe_core_g14"]
+KEYS = sys.argv[1:] or ["dinov2_vits14", "eva02_large", "siglip2_so400m", "siglip2_giant", "pe_core_g14",
+                        "convnextv2_huge", "swinv2_large"]
 OUT = ROOT / "output" / "backbone_comparison"
 
 ANALYSES = [  # (name, path relative to the backbone's output root)

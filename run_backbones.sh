@@ -2,12 +2,12 @@
 # Run the aquarium-species comparison for each backbone (same images, seeds and aquarium splits):
 #   1) feature analysis on inat_aquarium (100 species, aquarium scenes only, no training)
 #   2) linear probe on inat_aquarium, split by aquarium
-# Usage: bash run_backbones.sh [backbone ...]   (default: eva02_large siglip2_so400m siglip2_giant pe_core_g14)
+# Usage: bash run_backbones.sh [backbone ...]   (default: eva02_large siglip2_so400m siglip2_giant pe_core_g14 convnextv2_huge swinv2_large)
 set -u
 cd "$(dirname "$0")"
 PY=${PY:-venv/Scripts/python.exe}
 BACKBONES=("$@")
-[ ${#BACKBONES[@]} -eq 0 ] && BACKBONES=(eva02_large siglip2_so400m siglip2_giant pe_core_g14)
+[ ${#BACKBONES[@]} -eq 0 ] && BACKBONES=(eva02_large siglip2_so400m siglip2_giant pe_core_g14 convnextv2_huge swinv2_large)
 export PYTHONIOENCODING=utf-8
 
 for bb in "${BACKBONES[@]}"; do

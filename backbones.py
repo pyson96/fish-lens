@@ -50,6 +50,19 @@ BACKBONES = {
         source="timm vit_pe_core_gigantic_patch14_448.fb (Meta Perception Encoder Core G/14, 448 px)",
         amp=True, batch=8,
     ),
+    "convnextv2_huge": dict(
+        label="ConvNeXt V2 Huge (IN-22k ft, 384)",
+        timm="convnextv2_huge.fcmae_ft_in22k_in1k_384",
+        source="timm convnextv2_huge.fcmae_ft_in22k_in1k_384 (FCMAE pretrain + ImageNet-22k/1k fine-tune, 384 px)",
+        amp=True, batch=32,
+    ),
+    # Swin V2 Huge has no public pretrained weights; Swin V2 Large is the largest released checkpoint.
+    "swinv2_large": dict(
+        label="Swin V2 Large (IN-22k ft, 256)",
+        timm="swinv2_large_window12to16_192to256.ms_in22k_ft_in1k",
+        source="timm swinv2_large_window12to16_192to256.ms_in22k_ft_in1k (ImageNet-22k pretrain + 1k fine-tune, 256 px)",
+        amp=True, batch=64,
+    ),
     # Optional, not part of the default comparison: ImageNet-22k/1k fine-tuned EVA-02 L at 448 px (4x tokens)
     "eva02_large_ft448": dict(
         label="EVA-02 Large/14 (IN-22k ft, 448)",
