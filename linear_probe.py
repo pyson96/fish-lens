@@ -1,13 +1,15 @@
 """
-Linear probe on frozen DINOv2 ViT-S/14 embeddings (aquarium-list species, iNaturalist captive photos).
+Linear probe on frozen backbone embeddings (aquarium-list species, iNaturalist captive photos).
 
-Frozen DINOv2 -> 384-d CLS embedding (L2-normalized) -> multinomial logistic regression -> species
+Frozen backbone -> image embedding (L2-normalized) -> multinomial logistic regression -> species
 Train/test split by aquarium/location group (StratifiedGroupKFold), so no aquarium appears in both.
 
 Usage:
-    python linear_probe.py
+    python linear_probe.py                              # DINOv2 ViT-S/14 (default)
+    python linear_probe.py --backbone siglip2_so400m    # any key in backbones.BACKBONES
 """
 
+import argparse
 import json
 import warnings
 
@@ -23,15 +25,16 @@ from sklearn.metrics import balanced_accuracy_score, f1_score, top_k_accuracy_sc
 from sklearn.model_selection import GroupKFold, StratifiedGroupKFold
 
 import analyze_dinov2 as A
+from backbones import BACKBONES, DEFAULT_BACKBONE, output_root
 
-OUT = A.ROOT / "output" / "inat_aquarium" / "linear_probe"
+OUT = None  # set in main() from --backbone
 N_FOLDS = 5
 INNER_FOLDS = 3
-C_GRID = [0.3, 1.0, 3.0, 10.0, 30.0]
+C_GRID = [0.3, 1.0, 3.0, 10.0, 30.0, 100.0]
 COLORS = A.COLORS
 
 
-def load_data():
+def load_data(backbone: str):
     """All scene-filtered photos of the aquarium-list species (no per-class equalization)."""
     species = A.prepare_inat_aquarium()
     scenes = A.scene_filter(A.AQUARIUM_DIR, species)
@@ -48,8 +51,8 @@ def load_data():
             return species, np.load(cache_emb), cached
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = A.load_model(device)
-    emb, meta = A.extract_embeddings(model, meta, device, A.PREPROCESS["crop"])
+    bb = A.load_model(device, backbone)
+    emb, meta = A.extract_embeddings(bb.model, meta, device, bb.transforms["crop"], bb.amp, bb.batch)
     meta = A.inat_extra_meta(meta)
     sp_list = A.aquarium_list_species()
     tid = dict(zip(sp_list["inat_name"], sp_list["taxon_id"].astype(int)))
@@ -123,7 +126,7 @@ def summarize(df):
     return {c: (float(df[c].mean()), float(df[c].std())) for c in cols}
 
 
-def plot_per_species(per_sp, path):
+def plot_per_species(per_sp, path, label):
     per_sp = per_sp.sort_values("f1")
     fams = per_sp["family"].value_counts().index[:7].tolist()
     colors = [COLORS[fams.index(f)] if f in fams else "#b5b5b5" for f in per_sp["family"]]
@@ -133,7 +136,7 @@ def plot_per_species(per_sp, path):
                   fontsize=6)
     ax.set_xlim(0, 1)
     ax.set_xlabel("F1 (pooled over 5 aquarium-grouped test folds)")
-    ax.set_title("Linear probe on frozen DINOv2 ViT-S/14 - per-species F1\n"
+    ax.set_title(f"Linear probe on frozen {label} - per-species F1\n"
                  "iNaturalist captive photos, train/test split by aquarium", fontsize=11)
     ax.grid(True, axis="x", color="#e6e6e6", linewidth=0.6)
     ax.set_axisbelow(True)
@@ -147,7 +150,7 @@ def plot_per_species(per_sp, path):
     plt.close(fig)
 
 
-def plot_confusion(y_true, y_pred, species, families, path):
+def plot_confusion(y_true, y_pred, species, families, path, label):
     n = len(species)
     order = sorted(range(n), key=lambda i: (families[species[i]], species[i]))
     cm = np.zeros((n, n))
@@ -167,7 +170,7 @@ def plot_confusion(y_true, y_pred, species, families, path):
     ax.set_xlabel("Predicted species")
     ax.set_ylabel("True species")
     ax.set_title("Linear probe confusion matrix (row-normalized; ordered by family; red lines = family "
-                 "boundaries)\nfrozen DINOv2 ViT-S/14, train/test split by aquarium, 5 folds pooled", fontsize=11)
+                 f"boundaries)\nfrozen {label}, train/test split by aquarium, 5 folds pooled", fontsize=11)
     fig.colorbar(im, ax=ax, fraction=0.03, pad=0.02, label="fraction of true-species test photos")
     fig.tight_layout()
     fig.savefig(path)
@@ -175,10 +178,16 @@ def plot_confusion(y_true, y_pred, species, families, path):
 
 
 def main():
+    global OUT
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--backbone", choices=list(BACKBONES), default=DEFAULT_BACKBONE)
+    args = parser.parse_args()
+    label = BACKBONES[args.backbone]["label"]
+    OUT = output_root(A.ROOT, args.backbone) / "inat_aquarium" / "linear_probe"
     OUT.mkdir(parents=True, exist_ok=True)
     out_rel = OUT.relative_to(A.ROOT).as_posix()
-    print("Linear probe: frozen DINOv2 ViT-S/14 + logistic regression, split by aquarium")
-    species, emb, meta = load_data()
+    print(f"Linear probe: frozen {label} + logistic regression, split by aquarium -> {out_rel}")
+    species, emb, meta = load_data(args.backbone)
     X = emb / np.linalg.norm(emb, axis=1, keepdims=True)
     y = meta["species"].map({s: i for i, s in enumerate(species)}).to_numpy()
     families = dict(zip(meta["species"], meta["family"]))
@@ -231,14 +240,14 @@ def main():
     df_place.to_csv(OUT / "folds_split_by_aquarium.csv", index=False)
     df_obs.to_csv(OUT / "folds_split_by_observation.csv", index=False)
 
-    plot_per_species(per_sp, OUT / "per_species_f1.png")
-    plot_confusion(yt, yp, species, families, OUT / "confusion_matrix.png")
+    plot_per_species(per_sp, OUT / "per_species_f1.png", label)
+    plot_confusion(yt, yp, species, families, OUT / "confusion_matrix.png", label)
 
     fmt = lambda s, k: f"{s[k][0]:.3f} ± {s[k][1]:.3f}"
     bar = "=" * 48
     lines = [
-        bar, "", "DINOv2 Linear Probe - Aquarium species (iNaturalist captive)", "", bar, "",
-        "Model:", "DINOv2 ViT-S/14 (frozen) -> 384-d CLS (L2-normalized) -> logistic regression "
+        bar, "", f"{label} Linear Probe - Aquarium species (iNaturalist captive)", "", bar, "",
+        "Model:", f"{label} (frozen) -> {emb.shape[1]}-d embedding (L2-normalized) -> logistic regression "
         "(multinomial, class_weight=balanced)", "",
         "Data:", f"{len(meta)} photos, {len(species)} species, {len(set(families.values()))} families, "
         f"{counts.min()}-{counts.max()} photos/species", "",
@@ -277,8 +286,15 @@ def main():
     print("\n" + "\n".join(lines))
     (OUT / "linear_probe_summary.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     (OUT / "linear_probe_results.json").write_text(json.dumps(
-        {"split_by_aquarium": s_place, "split_by_observation": s_obs,
-         "same_family_error_share": same_fam_err}, indent=2), encoding="utf-8")
+        {"backbone": args.backbone, "backbone_label": label, "embedding_dim": int(emb.shape[1]),
+         "n_images": len(meta), "chosen_C": df_place["C"].tolist(),
+         "split_by_aquarium": s_place, "split_by_observation": s_obs,
+         "same_family_error_share": same_fam_err,
+         "species_f1_ge_0.9": int((per_sp["f1"] >= 0.9).sum()),
+         "species_f1_ge_0.8": int((per_sp["f1"] >= 0.8).sum()),
+         "species_f1_lt_0.6": int((per_sp["f1"] < 0.6).sum()),
+         "family_mean_f1": fam_df[fam_df["n_species"] >= 3]["mean_f1"].round(4).to_dict()},
+        indent=2), encoding="utf-8")
     print(f"Saved: {out_rel}/linear_probe_summary.txt")
 
 

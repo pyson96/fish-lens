@@ -1,0 +1,97 @@
+================================================
+
+SigLIP 2 Giant-opt/16 Linear Probe - Aquarium species (iNaturalist captive)
+
+================================================
+
+Model:
+SigLIP 2 Giant-opt/16 (frozen) -> 1536-d embedding (L2-normalized) -> logistic regression (multinomial, class_weight=balanced)
+
+Data:
+10956 photos, 100 species, 53 families, 66-120 photos/species
+
+Split:
+5-fold StratifiedGroupKFold by aquarium/location group (2503 groups); C chosen by inner 3-fold grouped CV on the training fold only (grid [0.3, 1.0, 3.0, 10.0, 30.0, 100.0])
+
+Results (mean ± std over folds)       split by AQUARIUM      | ref: split by observation
+  Top-1 accuracy                      0.886 ± 0.011          | 0.893 ± 0.005
+  Top-5 accuracy                      0.975 ± 0.006          | 0.976 ± 0.002
+  Macro-F1                            0.883 ± 0.012          | 0.890 ± 0.004
+  Balanced accuracy                   0.889 ± 0.013          | 0.894 ± 0.003
+  Family-level top-1                  0.941 ± 0.008          | 0.943 ± 0.005
+
+Chosen C per fold: [30.0, 30.0, 30.0, 30.0, 100.0]
+Share of errors within the same family: 0.480
+Species with F1 >= 0.9: 56, >= 0.8: 86, < 0.6: 3
+
+Worst 15 species (F1, top-1 recall, top-5 recall):
+  0.573  0.565  0.991  Hippocampus reidi [Syngnathidae]
+  0.580  0.508  0.966  Maylandia estherae [Cichlidae]
+  0.593  0.619  0.991  Hippocampus erectus [Syngnathidae]
+  0.674  0.653  0.958  Acanthurus dussumieri [Acanthuridae]
+  0.683  0.695  0.932  Taeniurops meyeni [Dasyatidae]
+  0.711  0.756  0.983  Labidochromis caeruleus [Cichlidae]
+  0.714  0.708  0.950  Acanthurus xanthopterus [Acanthuridae]
+  0.750  0.692  0.940  Pomacanthus semicirculatus [Pomacanthidae]
+  0.752  0.726  0.983  Hippocampus abdominalis [Syngnathidae]
+  0.763  0.736  0.944  Pseudobatos productus [Rhinobatidae]
+  0.763  0.770  0.920  Colossoma macropomum [Serrasalmidae]
+  0.764  0.748  0.983  Himantura uarnak [Dasyatidae]
+  0.788  0.788  1.000  Amphiprion perideraion [Pomacentridae]
+  0.793  0.816  0.897  Pomacanthus maculosus [Pomacanthidae]
+  0.802  0.825  0.983  Amphiprion clarkii [Pomacentridae]
+
+Best 10 species (F1):
+  0.987  Pterois volitans [Scorpaenidae]
+  0.983  Pterophyllum scalare [Cichlidae]
+  0.983  Synchiropus splendidus [Callionymidae]
+  0.982  Phyllopteryx taeniolatus [Syngnathidae]
+  0.975  Paracheirodon innesi [Acestrorhamphidae]
+  0.975  Centropyge loriculus [Pomacanthidae]
+  0.974  Oxycirrhites typus [Cirrhitidae]
+  0.974  Gymnothorax favagineus [Muraenidae]
+  0.973  Leporinus fasciatus [Anostomidae]
+  0.973  Hoplisoma sterbai [Callichthyidae]
+
+Top-20 confusions (fraction of true-species test photos predicted as the other species):
+  0.314  Maylandia estherae [Cichlidae] -> Labidochromis caeruleus [Cichlidae]
+  0.313  Hippocampus reidi [Syngnathidae] -> Hippocampus erectus [Syngnathidae]
+  0.265  Hippocampus erectus [Syngnathidae] -> Hippocampus reidi [Syngnathidae]
+  0.253  Acanthurus dussumieri [Acanthuridae] -> Acanthurus xanthopterus [Acanthuridae]
+  0.202  Labidochromis caeruleus [Cichlidae] -> Maylandia estherae [Cichlidae]
+  0.168  Himantura uarnak [Dasyatidae] -> Taeniurops meyeni [Dasyatidae]
+  0.167  Amphiprion perideraion [Pomacentridae] -> Amphiprion frenatus [Pomacentridae]
+  0.167  Acanthurus xanthopterus [Acanthuridae] -> Acanthurus dussumieri [Acanthuridae]
+  0.137  Hippocampus abdominalis [Syngnathidae] -> Hippocampus reidi [Syngnathidae]
+  0.127  Taeniurops meyeni [Dasyatidae] -> Himantura uarnak [Dasyatidae]
+  0.113  Hippocampus reidi [Syngnathidae] -> Hippocampus abdominalis [Syngnathidae]
+  0.110  Maylandia estherae [Cichlidae] -> Nimbochromis venustus [Cichlidae]
+  0.108  Amphiprion clarkii [Pomacentridae] -> Amphiprion ocellaris [Pomacentridae]
+  0.103  Hippocampus abdominalis [Syngnathidae] -> Hippocampus erectus [Syngnathidae]
+  0.100  Amphiprion ocellaris [Pomacentridae] -> Amphiprion clarkii [Pomacentridae]
+  0.097  Pseudobatos productus [Rhinobatidae] -> Rhina ancylostomus [Rhinidae]
+  0.095  Potamotrygon leopoldi [Potamotrygonidae] -> Potamotrygon motoro [Potamotrygonidae]
+  0.094  Pomacanthus semicirculatus [Pomacanthidae] -> Pomacanthus paru [Pomacanthidae]
+  0.088  Hippocampus erectus [Syngnathidae] -> Hippocampus abdominalis [Syngnathidae]
+  0.086  Amphiprion frenatus [Pomacentridae] -> Amphiprion clarkii [Pomacentridae]
+
+Families with >= 3 species (mean F1):
+                n_species  mean_f1
+family                            
+Syngnathidae            4    0.725
+Acanthuridae           13    0.844
+Pomacentridae           8    0.850
+Cichlidae               6    0.851
+Pomacanthidae           6    0.869
+Labridae                4    0.905
+Chaetodontidae          4    0.933
+
+Output:
+  output/backbones/siglip2_giant/inat_aquarium/linear_probe/per_species_f1.png
+  output/backbones/siglip2_giant/inat_aquarium/linear_probe/confusion_matrix.png
+  output/backbones/siglip2_giant/inat_aquarium/linear_probe/per_species_results.csv
+  output/backbones/siglip2_giant/inat_aquarium/linear_probe/test_predictions.csv
+  output/backbones/siglip2_giant/inat_aquarium/linear_probe/folds_split_by_aquarium.csv
+  output/backbones/siglip2_giant/inat_aquarium/linear_probe/folds_split_by_observation.csv
+
+================================================

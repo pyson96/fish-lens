@@ -1,11 +1,12 @@
 """
-DINOv2 ViT-S/14 backbone suitability test (no training).
+Frozen-backbone fish feature analysis (no training). Backbones are defined in backbones.py.
 
-Fish image -> frozen DINOv2 ViT-S/14 -> 384-d CLS embedding
--> L2 normalize -> PCA / t-SNE / UMAP / silhouette / class-mean cosine similarity.
+Fish image -> frozen backbone (default DINOv2 ViT-S/14) -> image embedding
+-> L2 normalize -> PCA / t-SNE / UMAP / silhouette / leakage-aware k-NN / class-mean cosine similarity.
 
 Usage:
     python analyze_dinov2.py                          # Fish4Knowledge (official, 4 species)
+    python analyze_dinov2.py --backbone siglip2_so400m --dataset inat_aquarium --aquarium-only
     python analyze_dinov2.py --dataset 76cr3wfhff-1   # local RAR dataset (8 species)
     python analyze_dinov2.py --dataset inat_captive   # iNaturalist captive (aquarium) photos
     python analyze_dinov2.py --dataset inat_captive --preprocess pad   # pad-to-square, no crop
@@ -89,6 +90,8 @@ SEED = 42
 BATCH_SIZE = 64
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 K_NEIGHBORS = 10
+
+from backbones import BACKBONES, DEFAULT_BACKBONE, Backbone, load_backbone, output_root
 
 # ImageNet normalization, as used for the official DINOv2 pretrained weights
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
@@ -605,59 +608,43 @@ def select_images(data_dir: Path, species_names: list[str], keep: set | None = N
 # ---------------------------------------------------------------------------
 # 3-5. Model + feature extraction
 # ---------------------------------------------------------------------------
-def load_model(device: torch.device) -> torch.nn.Module:
-    print("\n[3] Loading DINOv2 ViT-S/14 (official Meta weights via torch.hub)")
-    model = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14", trust_repo=True)
-    model.eval()
-    for p in model.parameters():
-        p.requires_grad_(False)
-    model.to(device)
+def load_model(device: torch.device, key: str = DEFAULT_BACKBONE) -> Backbone:
+    spec = BACKBONES[key]
+    print(f"\n[3] Loading {spec['label']} ({spec['source']})")
+    bb = load_backbone(key, device)
     print(f"  Device: {'CUDA (' + torch.cuda.get_device_name(0) + ')' if device.type == 'cuda' else 'CPU'}")
-    print("  Model: DINOv2 ViT-S/14")
-    print(f"  Embedding dimension: {model.embed_dim}")
-    print(f"  Trainable parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
-    return model
+    print(f"  Model: {bb.label}")
+    print(f"  Embedding dimension: {bb.dim}")
+    print(f"  Trainable parameters: {sum(p.numel() for p in bb.model.parameters() if p.requires_grad)}")
+    print(f"  Mixed precision (fp16 autocast): {bb.amp}")
+    return bb
 
 
-def pad_to_square(img: Image.Image) -> Image.Image:
-    """Letterbox to a square with the ImageNet mean color, so nothing is cropped away."""
-    w, h = img.size
-    side = max(w, h)
-    canvas = Image.new("RGB", (side, side), tuple(int(m * 255) for m in IMAGENET_MEAN))
-    canvas.paste(img, ((side - w) // 2, (side - h) // 2))
-    return canvas
+PREPROCESS_CHOICES = ["crop", "pad"]
 
 
-PREPROCESS = {
-    # Resize short side -> center crop (default, as specified)
-    "crop": transforms.Compose([
-        transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
-        transforms.CenterCrop(224),  # 224 = 16 x 14 patches
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ]),
-    # Whole image kept: pad to square -> resize (fish near the frame edge is not cut off)
-    "pad": transforms.Compose([
-        transforms.Lambda(pad_to_square),
-        transforms.Resize((224, 224), interpolation=transforms.InterpolationMode.BICUBIC),
-        transforms.ToTensor(),
-        transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
-    ]),
-}
-PREPROCESS_DESC = {
-    "crop": "RGB -> Resize(256, bicubic) -> CenterCrop(224) -> ImageNet Normalize",
-    "pad": "RGB -> pad to square (ImageNet mean color) -> Resize(224x224, bicubic) -> ImageNet Normalize",
-}
+def reuse_probe_embeddings(backbone: str, meta: pd.DataFrame):
+    """Embeddings already extracted by linear_probe.py (all aquarium photos) for the same backbone."""
+    d = output_root(ROOT, backbone) / "inat_aquarium" / "linear_probe"
+    if not (d / "embeddings_all.npy").exists() or not (d / "metadata_all.csv").exists():
+        return None
+    paths = pd.read_csv(d / "metadata_all.csv", usecols=["image_path"])["image_path"]
+    pos = pd.Series(np.arange(len(paths)), index=paths.values)
+    if not meta["image_path"].isin(pos.index).all():
+        return None
+    return np.load(d / "embeddings_all.npy")[pos[meta["image_path"]].to_numpy()]
 
 
-def extract_embeddings(model, meta: pd.DataFrame, device, preprocess) -> tuple[np.ndarray, pd.DataFrame]:
-    print("\n[4] Feature extraction (frozen, inference_mode)")
+def extract_embeddings(model, meta: pd.DataFrame, device, preprocess, amp: bool = False,
+                       batch_size: int = BATCH_SIZE) -> tuple[np.ndarray, pd.DataFrame]:
+    print(f"\n[4] Feature extraction (frozen, inference_mode, amp={amp})")
     feats, keep = [], []
     batch, batch_idx = [], []
 
     def flush():
         x = torch.stack(batch).to(device)
-        out = model(x)  # CLS token after final norm: (B, 384)
+        with torch.autocast(device_type=device.type, dtype=torch.float16, enabled=amp):
+            out = model(x)  # image-level embedding (DINOv2: CLS after final norm; timm: pooled features)
         feats.append(out.float().cpu().numpy())
         keep.extend(batch_idx)
         batch.clear()
@@ -672,7 +659,7 @@ def extract_embeddings(model, meta: pd.DataFrame, device, preprocess) -> tuple[n
             except Exception as e:  # corrupted / unreadable only
                 print(f"  [skip] unreadable image {path}: {e}")
                 continue
-            if len(batch) == BATCH_SIZE:
+            if len(batch) == batch_size:
                 flush()
         if batch:
             flush()
@@ -777,7 +764,7 @@ def scatter_2d(xy, labels, species_names, title, ds_title, xlabel, ylabel, out_p
     plt.close(fig)
 
 
-def heatmap_large(sim, names, families, ds_title, out_path):
+def heatmap_large(sim, names, families, ds_title, out_path, model_label="DINOv2 ViT-S/14"):
     """Many species: order by family, no cell text, family boundaries drawn."""
     order = sorted(range(len(names)), key=lambda i: (families[names[i]], names[i]))
     sim = sim[np.ix_(order, order)]
@@ -794,16 +781,16 @@ def heatmap_large(sim, names, families, ds_title, out_path):
             ax.axhline(i - 0.5, color="#e34948", linewidth=0.4)
             ax.axvline(i - 0.5, color="#e34948", linewidth=0.4)
     ax.set_title("Cosine similarity between species mean embeddings (ordered by family; red lines = family "
-                 f"boundaries)\nDINOv2 ViT-S/14 (L2-normalized) - {ds_title}", fontsize=11)
+                 f"boundaries)\n{model_label} (L2-normalized) - {ds_title}", fontsize=11)
     fig.colorbar(im, ax=ax, fraction=0.03, pad=0.02, label=f"cosine similarity (color range {vmin:.1f}-1.0)")
     fig.tight_layout()
     fig.savefig(out_path)
     plt.close(fig)
 
 
-def heatmap(sim, names, ds_title, out_path, families=None):
+def heatmap(sim, names, ds_title, out_path, families=None, model_label="DINOv2 ViT-S/14"):
     if len(names) > 12 and families:
-        return heatmap_large(sim, names, families, ds_title, out_path)
+        return heatmap_large(sim, names, families, ds_title, out_path, model_label)
     n = len(names)
     fig, ax = plt.subplots(figsize=(7.5 + 0.6 * max(0, n - 4), 6.3 + 0.5 * max(0, n - 4)), dpi=150)
     vmin = np.floor(sim.min() * 10) / 10  # stretch color range so differences are visible
@@ -816,7 +803,7 @@ def heatmap(sim, names, ds_title, out_path, families=None):
             ax.text(j, i, f"{sim[i, j]:.3f}", ha="center", va="center", fontsize=10 if n <= 4 else 8.5,
                     color="white" if sim[i, j] > thr else "#222222")
     ax.set_title("Cosine similarity between species mean embeddings\n"
-                 f"DINOv2 ViT-S/14 (L2-normalized) - {ds_title}", fontsize=11)
+                 f"{model_label} (L2-normalized) - {ds_title}", fontsize=11)
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label=f"cosine similarity (color range {vmin:.1f}-1.0)")
     fig.tight_layout()
     fig.savefig(out_path)
@@ -829,13 +816,15 @@ def heatmap(sim, names, ds_title, out_path, families=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset", choices=list(DATASETS), default="fish4knowledge")
-    parser.add_argument("--preprocess", choices=list(PREPROCESS), default="crop",
+    parser.add_argument("--backbone", choices=list(BACKBONES), default=DEFAULT_BACKBONE)
+    parser.add_argument("--preprocess", choices=PREPROCESS_CHOICES, default="crop",
                         help="crop: resize+center crop (default); pad: keep whole image, pad to square")
     parser.add_argument("--aquarium-only", action="store_true",
                         help="keep only photos a species-agnostic CLIP scene filter labels as aquarium tank")
     args = parser.parse_args()
     ds = DATASETS[args.dataset]
-    out_dir = ds["out"] / "aquarium_only" if args.aquarium_only else ds["out"]
+    ds_out = output_root(ROOT, args.backbone) / ds["out"].relative_to(ROOT / "output")
+    out_dir = ds_out / "aquarium_only" if args.aquarium_only else ds_out
     if args.preprocess != "crop":
         out_dir = out_dir / args.preprocess
     out_rel = out_dir.relative_to(ROOT).as_posix()
@@ -866,8 +855,14 @@ def main():
     meta = select_images(ds["dir"], species_names, keep)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = load_model(device)
-    emb, meta = extract_embeddings(model, meta, device, PREPROCESS[args.preprocess])
+    bb = load_model(device, args.backbone)
+    cached = reuse_probe_embeddings(args.backbone, meta) if args.preprocess == "crop" else None
+    if cached is not None:
+        emb = cached
+        print(f"\n[4] Reused {emb.shape} embeddings from this backbone's linear-probe cache "
+              f"(same images, same crop preprocessing)")
+    else:
+        emb, meta = extract_embeddings(bb.model, meta, device, bb.transforms[args.preprocess], bb.amp, bb.batch)
     if "extra_meta" in ds:
         meta = ds["extra_meta"](meta)
     labels = meta["species"].to_numpy()
@@ -891,7 +886,7 @@ def main():
     xy_pca = pca.fit_transform(emb_n)
     ev = pca.explained_variance_ratio_ * 100
     print(f"  PCA Explained Variance\n  PC1 : {ev[0]:.1f}%\n  PC2 : {ev[1]:.1f}%\n  Total : {ev.sum():.1f}%")
-    scatter_2d(xy_pca, labels, species_names, "DINOv2 Fish Embedding - PCA", ds["title"],
+    scatter_2d(xy_pca, labels, species_names, f"{bb.label} Fish Embedding - PCA", ds["title"],
                f"PC1 ({ev[0]:.1f}% variance)", f"PC2 ({ev[1]:.1f}% variance)", out_dir / "pca.png", families=families)
 
     # 8. t-SNE
@@ -900,7 +895,7 @@ def main():
     tsne = TSNE(n_components=2, perplexity=perplexity, metric="cosine", init="pca",
                 random_state=TSNE_RANDOM_STATE)
     xy_tsne = tsne.fit_transform(emb_n)
-    scatter_2d(xy_tsne, labels, species_names, "DINOv2 Fish Embedding - t-SNE", ds["title"],
+    scatter_2d(xy_tsne, labels, species_names, f"{bb.label} Fish Embedding - t-SNE", ds["title"],
                "t-SNE 1", "t-SNE 2", out_dir / "tsne.png",
                subtitle=f"perplexity={perplexity:g}, metric=cosine, random_state=42", families=families)
 
@@ -908,12 +903,12 @@ def main():
     import umap
     print(f"\n[7] UMAP  {UMAP_PARAMS}")
     xy_umap = umap.UMAP(n_components=2, **UMAP_PARAMS).fit_transform(emb_n)
-    scatter_2d(xy_umap, labels, species_names, "DINOv2 Fish Embedding - UMAP", ds["title"],
+    scatter_2d(xy_umap, labels, species_names, f"{bb.label} Fish Embedding - UMAP", ds["title"],
                "UMAP 1", "UMAP 2", out_dir / "umap.png",
                subtitle="n_neighbors=15, min_dist=0.1, metric=cosine, random_state=42", families=families)
 
     # 11. Silhouette (384-d normalized space)
-    print("\n[8] Quantitative evaluation (384-d normalized space)")
+    print(f"\n[8] Quantitative evaluation ({emb.shape[1]}-d normalized space)")
     sil_cos = silhouette_score(emb_n, labels, metric="cosine")
     sil_euc = silhouette_score(emb_n, labels, metric="euclidean")
     sil_samples = silhouette_samples(emb_n, labels, metric="cosine")
@@ -954,6 +949,7 @@ def main():
     shorts = [short_name(s) for s in species_names]
     knn_lines = []
     knn_results = []
+    knn_metrics = []
     for n_ex, (desc, exclude) in enumerate(ds["exclusion"](meta).items()):
         mat, acc, vote, nn_lab = knn_analysis(emb_n, lab_idx, exclude, len(species_names))
         mat_df = pd.DataFrame(mat, index=shorts, columns=shorts)
@@ -961,6 +957,7 @@ def main():
         np.fill_diagonal(off, -1)
         oa, ob = np.unravel_index(np.argmax(off), off.shape)
         knn_results.append((desc, acc, oa, ob))
+        knn_metrics.append({"exclusion": desc, "knn_agreement": float(acc)})
         if not many:
             knn_lines += [
                 f"{K_NEIGHBORS}-NN neighbor composition (row = query species; cosine; {desc}):",
@@ -986,6 +983,9 @@ def main():
             ]
             if families:
                 fam_arr = np.array([families[x] for x in species_names])
+                knn_metrics[-1]["family_agreement"] = float((fam_arr[vote] == fam_arr[lab_idx]).mean())
+                knn_metrics[-1]["species_ge_0.9"] = int((per_acc >= 0.9).sum())
+                knn_metrics[-1]["species_lt_0.5"] = int((per_acc < 0.5).sum())
                 wrong = vote != lab_idx
                 knn_lines += [
                     f"Family-level agreement (species vote mapped to family): "
@@ -1011,7 +1011,8 @@ def main():
         with pd.option_context("display.width", 250):
             print("\n  Species mean-embedding cosine similarity")
             print(sim_df.round(3).to_string())
-    heatmap(sim, species_names, ds["title"], out_dir / "species_cosine_similarity.png", families=families)
+    heatmap(sim, species_names, ds["title"], out_dir / "species_cosine_similarity.png", families=families,
+            model_label=bb.label)
     iu = np.triu_indices(len(species_names), k=1)
     best = np.argmax(sim[iu])
     a, b = iu[0][best], iu[1][best]
@@ -1031,9 +1032,9 @@ def main():
     counts = meta["species"].value_counts().reindex(species_names)
     bar = "=" * 40
     summary = [
-        bar, "", "DINOv2 Fish Feature Analysis", "", bar, "",
+        bar, "", f"{bb.label} Fish Feature Analysis", "", bar, "",
         "Dataset:", ds["description"], "",
-        "Model:", "DINOv2 ViT-S/14 (frozen, official Meta weights, CLS token)", "",
+        "Model:", f"{bb.label} (frozen; {bb.source})", "",
         "Embedding:", f"{emb.shape[1]} dimensions", "",
         "Images:", "",
         *([f"{s:<29}: {counts[s]}" + (f"   ({dict(INAT_SPECIES)[s]})" if s in dict(INAT_SPECIES) else "")
@@ -1042,7 +1043,7 @@ def main():
            f"(full list: {out_rel}/per_species_stats.csv)"]
           + ([f"{len(set(families.values()))} families"] if families else [])), "",
         "Total:", f"{len(meta)}", "",
-        "Silhouette Score:", f"{sil_cos:.2f}  (cosine, 384-d L2-normalized; euclidean={sil_euc:.2f})", "",
+        "Silhouette Score:", f"{sil_cos:.2f}  (cosine, {emb.shape[1]}-d L2-normalized; euclidean={sil_euc:.2f})", "",
         "Most Similar Species:", f"{species_names[a]} <-> {species_names[b]}", "",
         "Cosine Similarity:", f"{sim[a, b]:.2f}", "",
         f"{K_NEIGHBORS}-NN Agreement (no training):",
@@ -1057,7 +1058,7 @@ def main():
     details = [
         "", "Details", "-------",
         f"Device: {device.type.upper()}",
-        f"Preprocessing ({args.preprocess}): {PREPROCESS_DESC[args.preprocess]}",
+        f"Preprocessing ({args.preprocess}): {bb.transform_desc[args.preprocess]}",
         f"Sampling: up to {MAX_PER_SPECIES} per species (equalized to the smallest class), "
         f"numpy default_rng(seed={SEED})",
         f"t-SNE: perplexity={perplexity:g}, metric=cosine, init=pca, random_state={TSNE_RANDOM_STATE}",
@@ -1070,7 +1071,7 @@ def main():
         "  negative -> samples likely mixed into other class regions",
         "  (Silhouette alone does not decide backbone suitability.)",
         "",
-        "Per-species statistics (384-d normalized space):",
+        f"Per-species statistics ({emb.shape[1]}-d normalized space):",
         per_df.to_string(index=False, float_format="{:.3f}".format) if not many
         else f"{out_rel}/per_species_stats.csv",
         "",
@@ -1082,11 +1083,21 @@ def main():
         "",
         *knn_lines,
         "Caveat: 2D PCA/t-SNE/UMAP separation does NOT imply high classification accuracy.",
-        f"Next step if positive: frozen DINOv2 -> 384-d embedding -> Linear Classifier -> "
+        f"Next step if positive: frozen {bb.label} -> {bb.dim}-d embedding -> Linear Classifier -> "
         f"{len(species_names)} species,",
         f"measure Linear Probe Accuracy / Macro-F1 (with {ds['split_hint']}).",
     ]
     (out_dir / "analysis_summary.txt").write_text("\n".join(summary + details) + "\n", encoding="utf-8")
+    (out_dir / "metrics.json").write_text(json.dumps({
+        "backbone": args.backbone, "backbone_label": bb.label, "embedding_dim": bb.dim,
+        "dataset": args.dataset, "aquarium_only": args.aquarium_only, "preprocess": args.preprocess,
+        "n_images": len(meta), "n_species": len(species_names),
+        "silhouette_cosine": float(sil_cos), "silhouette_euclidean": float(sil_euc),
+        "nearest_centroid_loo_mean": float(per_df["nearest_centroid_is_own(LOO)"].mean()),
+        "pca_2d_explained_variance": float(ev.sum() / 100),
+        "most_similar_pair": [species_names[a], species_names[b], float(sim[a, b])],
+        "knn": knn_metrics,
+    }, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nSaved: {out_rel}/analysis_summary.txt")
 
 

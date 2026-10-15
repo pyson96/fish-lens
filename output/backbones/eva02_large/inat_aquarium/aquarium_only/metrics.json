@@ -1,0 +1,35 @@
+{
+  "backbone": "eva02_large",
+  "backbone_label": "EVA-02 Large/14 (CLIP)",
+  "embedding_dim": 1024,
+  "dataset": "inat_aquarium",
+  "aquarium_only": true,
+  "preprocess": "crop",
+  "n_images": 6600,
+  "n_species": 100,
+  "silhouette_cosine": 0.08764579892158508,
+  "silhouette_euclidean": 0.05441799759864807,
+  "nearest_centroid_loo_mean": 0.7533333333333334,
+  "pca_2d_explained_variance": 0.2553800642490387,
+  "most_similar_pair": [
+    "Hippocampus erectus",
+    "Hippocampus reidi",
+    0.9945391416549683
+  ],
+  "knn": [
+    {
+      "exclusion": "same-observation photos (same individual) excluded",
+      "knn_agreement": 0.7515151515151515,
+      "family_agreement": 0.863030303030303,
+      "species_ge_0.9": 18,
+      "species_lt_0.5": 10
+    },
+    {
+      "exclusion": "STRICT: all photos from the same aquarium/location group excluded (any species, 1816 groups)",
+      "knn_agreement": 0.7368181818181818,
+      "family_agreement": 0.8534848484848485,
+      "species_ge_0.9": 17,
+      "species_lt_0.5": 10
+    }
+  ]
+}

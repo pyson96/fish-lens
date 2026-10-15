@@ -1,0 +1,35 @@
+{
+  "backbone": "pe_core_g14",
+  "backbone_label": "PE-Core G/14 (448)",
+  "embedding_dim": 1536,
+  "dataset": "inat_aquarium",
+  "aquarium_only": true,
+  "preprocess": "crop",
+  "n_images": 6600,
+  "n_species": 100,
+  "silhouette_cosine": 0.17740637063980103,
+  "silhouette_euclidean": 0.102385513484478,
+  "nearest_centroid_loo_mean": 0.8889393939393939,
+  "pca_2d_explained_variance": 0.16190585494041443,
+  "most_similar_pair": [
+    "Acanthurus dussumieri",
+    "Acanthurus xanthopterus",
+    0.990688681602478
+  ],
+  "knn": [
+    {
+      "exclusion": "same-observation photos (same individual) excluded",
+      "knn_agreement": 0.8696969696969697,
+      "family_agreement": 0.9436363636363636,
+      "species_ge_0.9": 58,
+      "species_lt_0.5": 1
+    },
+    {
+      "exclusion": "STRICT: all photos from the same aquarium/location group excluded (any species, 1816 groups)",
+      "knn_agreement": 0.8636363636363636,
+      "family_agreement": 0.9396969696969697,
+      "species_ge_0.9": 55,
+      "species_lt_0.5": 3
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ========================================
 
-DINOv2 Fish Feature Analysis
+DINOv2 ViT-S/14 Fish Feature Analysis
 
 ========================================
 
@@ -8,7 +8,7 @@ Dataset:
 Fish4Knowledge (official GT/RECOG, clusters 01-04)
 
 Model:
-DINOv2 ViT-S/14 (frozen, official Meta weights, CLS token)
+DINOv2 ViT-S/14 (frozen; Meta official weights via torch.hub (self-supervised, LVD-142M))
 
 Embedding:
 384 dimensions
@@ -50,7 +50,7 @@ output/species_cosine_similarity.png
 Details
 -------
 Device: CUDA
-Preprocessing: RGB -> Resize(256, bicubic) -> CenterCrop(224) -> ImageNet Normalize
+Preprocessing (crop): RGB -> Resize(256, bicubic) -> CenterCrop(224) -> Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
 Sampling: up to 300 per species (equalized to the smallest class), numpy default_rng(seed=42)
 t-SNE: perplexity=30, metric=cosine, init=pca, random_state=42
 UMAP: {'n_neighbors': 15, 'min_dist': 0.1, 'metric': 'cosine', 'random_state': 42}
@@ -74,6 +74,13 @@ D. reticulatus           1.000      0.876        0.896       0.743
 P. dickii                0.876      1.000        0.901       0.732
 C. chrysura              0.896      0.901        1.000       0.710
 A. clarkii               0.743      0.732        0.710       1.000
+Top-15 most similar species pairs (mean-embedding cosine):
+  0.901  Plectroglyphidodon dickii <-> Chromis chrysura
+  0.896  Dascyllus reticulatus <-> Chromis chrysura
+  0.876  Dascyllus reticulatus <-> Plectroglyphidodon dickii
+  0.743  Dascyllus reticulatus <-> Amphiprion clarkii
+  0.732  Plectroglyphidodon dickii <-> Amphiprion clarkii
+  0.710  Chromis chrysura <-> Amphiprion clarkii
 
 Least similar pair: Chromis chrysura <-> Amphiprion clarkii (0.710)
 
@@ -87,5 +94,5 @@ A. clarkii               0.012      0.009        0.005       0.973
 Most overlapping pair (k-NN): Plectroglyphidodon dickii <-> Chromis chrysura (0.110 / 0.054)
 
 Caveat: 2D PCA/t-SNE/UMAP separation does NOT imply high classification accuracy.
-Next step if positive: frozen DINOv2 -> 384-d embedding -> Linear Classifier -> 4 species,
+Next step if positive: frozen DINOv2 ViT-S/14 -> 384-d embedding -> Linear Classifier -> 4 species,
 measure Linear Probe Accuracy / Macro-F1 (with trajectory (trackingID)-aware train/test split).

@@ -1,0 +1,25 @@
+{
+  "backbone": "dinov2_vits14",
+  "backbone_label": "DINOv2 ViT-S/14",
+  "embedding_dim": 384,
+  "dataset": "fish4knowledge",
+  "aquarium_only": false,
+  "preprocess": "crop",
+  "n_images": 1200,
+  "n_species": 4,
+  "silhouette_cosine": 0.1266614943742752,
+  "silhouette_euclidean": 0.07310628890991211,
+  "nearest_centroid_loo_mean": 0.9166666666666666,
+  "pca_2d_explained_variance": 0.23684577643871307,
+  "most_similar_pair": [
+    "Plectroglyphidodon dickii",
+    "Chromis chrysura",
+    0.9010044932365417
+  ],
+  "knn": [
+    {
+      "exclusion": "same-trajectory neighbors excluded",
+      "knn_agreement": 0.9466666666666667
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "backbone": "siglip2_so400m",
+  "backbone_label": "SigLIP 2 So400m/14",
+  "embedding_dim": 1152,
+  "dataset": "inat_aquarium",
+  "aquarium_only": true,
+  "preprocess": "crop",
+  "n_images": 6600,
+  "n_species": 100,
+  "silhouette_cosine": 0.10637961328029633,
+  "silhouette_euclidean": 0.06233430281281471,
+  "nearest_centroid_loo_mean": 0.8099999999999998,
+  "pca_2d_explained_variance": 0.17508754134178162,
+  "most_similar_pair": [
+    "Hippocampus erectus",
+    "Hippocampus reidi",
+    0.9953655004501343
+  ],
+  "knn": [
+    {
+      "exclusion": "same-observation photos (same individual) excluded",
+      "knn_agreement": 0.7757575757575758,
+      "family_agreement": 0.8895454545454545,
+      "species_ge_0.9": 19,
+      "species_lt_0.5": 8
+    },
+    {
+      "exclusion": "STRICT: all photos from the same aquarium/location group excluded (any species, 1816 groups)",
+      "knn_agreement": 0.7651515151515151,
+      "family_agreement": 0.8822727272727273,
+      "species_ge_0.9": 19,
+      "species_lt_0.5": 10
+    }
+  ]
+}

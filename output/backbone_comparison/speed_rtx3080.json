@@ -1,0 +1,42 @@
+{
+  "dinov2_vits14": {
+    "params_M": 22,
+    "input": 224,
+    "batch": 64,
+    "fp16": false,
+    "img_per_s": 907.0,
+    "peak_GB": 0.4
+  },
+  "eva02_large": {
+    "params_M": 303,
+    "input": 224,
+    "batch": 64,
+    "fp16": true,
+    "img_per_s": 169.1,
+    "peak_GB": 2.0
+  },
+  "siglip2_so400m": {
+    "params_M": 428,
+    "input": 224,
+    "batch": 64,
+    "fp16": true,
+    "img_per_s": 187.2,
+    "peak_GB": 2.4
+  },
+  "siglip2_giant": {
+    "params_M": 1163,
+    "input": 256,
+    "batch": 16,
+    "fp16": true,
+    "img_per_s": 73.1,
+    "peak_GB": 4.9
+  },
+  "pe_core_g14": {
+    "params_M": 1880,
+    "input": 448,
+    "batch": 8,
+    "fp16": true,
+    "img_per_s": 10.4,
+    "peak_GB": 8.1
+  }
+}
