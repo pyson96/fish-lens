@@ -181,7 +181,11 @@ def main():
     global OUT
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--backbone", choices=list(BACKBONES), default=DEFAULT_BACKBONE)
+    parser.add_argument("--c-grid", type=float, nargs="+", default=None,
+                        help=f"candidate C values for the inner grouped CV (default {C_GRID})")
     args = parser.parse_args()
+    if args.c_grid:
+        C_GRID[:] = sorted(args.c_grid)
     label = BACKBONES[args.backbone]["label"]
     OUT = output_root(A.ROOT, args.backbone) / "inat_aquarium" / "linear_probe"
     OUT.mkdir(parents=True, exist_ok=True)
@@ -287,7 +291,7 @@ def main():
     (OUT / "linear_probe_summary.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     (OUT / "linear_probe_results.json").write_text(json.dumps(
         {"backbone": args.backbone, "backbone_label": label, "embedding_dim": int(emb.shape[1]),
-         "n_images": len(meta), "chosen_C": df_place["C"].tolist(),
+         "n_images": len(meta), "c_grid": list(C_GRID), "chosen_C": df_place["C"].tolist(),
          "split_by_aquarium": s_place, "split_by_observation": s_obs,
          "same_family_error_share": same_fam_err,
          "species_f1_ge_0.9": int((per_sp["f1"] >= 0.9).sum()),
