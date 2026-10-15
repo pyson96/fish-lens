@@ -1,0 +1,127 @@
+========================================
+
+DINOv2 Fish Feature Analysis
+
+========================================
+
+Dataset:
+iNaturalist captive=true observations (aquarium photos, CC0/CC-BY/CC-BY-NC), 5 species
+
+Model:
+DINOv2 ViT-S/14 (frozen, official Meta weights, CLS token)
+
+Embedding:
+384 dimensions
+
+Images:
+
+Gnathanodon speciosus        : 69   (골든 트레발리)
+Caranx ignobilis             : 69   (자이언트 트레발리(GT))
+Epinephelus lanceolatus      : 69   (자이언트 그루퍼)
+Trachinotus blochii          : 69   (폼파노)
+Rhina ancylostoma            : 69   (목탁수구리)
+
+Total:
+345
+
+Silhouette Score:
+0.15  (cosine, 384-d L2-normalized; euclidean=0.09)
+
+Most Similar Species:
+Caranx ignobilis <-> Trachinotus blochii
+
+Cosine Similarity:
+0.86
+
+10-NN Agreement (no training):
+0.887  (same-observation photos (same individual) excluded)
+0.864  (STRICT: all photos from the same aquarium/location group excluded (any species, 175 groups))
+
+PCA Explained Variance:
+21.4%  (PC1 12.4% + PC2 9.0%)
+
+Output:
+
+output/inat_captive/aquarium_only/pca.png
+output/inat_captive/aquarium_only/tsne.png
+output/inat_captive/aquarium_only/umap.png
+output/inat_captive/aquarium_only/species_cosine_similarity.png
+
+========================================
+
+Details
+-------
+Device: CUDA
+Preprocessing (crop): RGB -> Resize(256, bicubic) -> CenterCrop(224) -> ImageNet Normalize
+Sampling: up to 300 per species (equalized to the smallest class), numpy default_rng(seed=42)
+t-SNE: perplexity=30, metric=cosine, init=pca, random_state=42
+UMAP: {'n_neighbors': 15, 'min_dist': 0.1, 'metric': 'cosine', 'random_state': 42}
+
+Scene filter (CLIP ViT-B-32 laion2b_s34b_b79k, species-agnostic zero-shot):
+scene                    aquarium  market_or_food  other  pond_or_farm
+species                                                               
+Gnathanodon speciosus         175               3      1             4
+Caranx ignobilis               83               7      4             8
+Epinephelus lanceolatus       334               4      5            26
+Trachinotus blochii            67               7      0             2
+Rhina ancylostoma             202               0      7             0
+kept 901 / excluded 38
+
+Silhouette interpretation (reference only):
+  near 1  -> class features tend to be well separated
+  near 0  -> classes tend to overlap
+  negative -> samples likely mixed into other class regions
+  (Silhouette alone does not decide backbone suitability.)
+
+Per-species statistics (384-d normalized space):
+                species  n  silhouette_mean  silhouette_neg_frac  mean_cos_to_own_centroid  spread(1-mean_cos)  nearest_centroid_is_own(LOO)
+  Gnathanodon speciosus 69            0.191                0.087                     0.756               0.244                         0.797
+       Caranx ignobilis 69            0.059                0.159                     0.705               0.295                         0.928
+Epinephelus lanceolatus 69            0.134                0.159                     0.659               0.341                         0.899
+    Trachinotus blochii 69            0.099                0.130                     0.723               0.277                         0.884
+      Rhina ancylostoma 69            0.286                0.014                     0.741               0.259                         0.986
+
+Species mean-embedding cosine similarity:
+                G. speciosus  C. ignobilis  E. lanceolatus  T. blochii  R. ancylostoma
+G. speciosus           1.000         0.825           0.587       0.822           0.545
+C. ignobilis           0.825         1.000           0.694       0.861           0.659
+E. lanceolatus         0.587         0.694           1.000       0.563           0.578
+T. blochii             0.822         0.861           0.563       1.000           0.603
+R. ancylostoma         0.545         0.659           0.578       0.603           1.000
+Top-15 most similar species pairs (mean-embedding cosine):
+  0.861  Caranx ignobilis <-> Trachinotus blochii
+  0.825  Gnathanodon speciosus <-> Caranx ignobilis
+  0.822  Gnathanodon speciosus <-> Trachinotus blochii
+  0.694  Caranx ignobilis <-> Epinephelus lanceolatus
+  0.659  Caranx ignobilis <-> Rhina ancylostoma
+  0.603  Trachinotus blochii <-> Rhina ancylostoma
+  0.587  Gnathanodon speciosus <-> Epinephelus lanceolatus
+  0.578  Epinephelus lanceolatus <-> Rhina ancylostoma
+  0.563  Epinephelus lanceolatus <-> Trachinotus blochii
+  0.545  Gnathanodon speciosus <-> Rhina ancylostoma
+
+Least similar pair: Gnathanodon speciosus <-> Rhina ancylostoma (0.545)
+
+10-NN neighbor composition (row = query species; cosine; same-observation photos (same individual) excluded):
+                G. speciosus  C. ignobilis  E. lanceolatus  T. blochii  R. ancylostoma
+G. speciosus           0.793         0.112           0.010       0.067           0.019
+C. ignobilis           0.117         0.678           0.049       0.112           0.043
+E. lanceolatus         0.030         0.093           0.833       0.022           0.022
+T. blochii             0.087         0.138           0.009       0.742           0.025
+R. ancylostoma         0.019         0.020           0.001       0.029           0.930
+10-NN majority-vote agreement (non-parametric, no training): 0.887
+Most overlapping pair (k-NN): Caranx ignobilis <-> Trachinotus blochii (0.112 / 0.138)
+
+10-NN neighbor composition (row = query species; cosine; STRICT: all photos from the same aquarium/location group excluded (any species, 175 groups)):
+                G. speciosus  C. ignobilis  E. lanceolatus  T. blochii  R. ancylostoma
+G. speciosus           0.793         0.110           0.010       0.068           0.019
+C. ignobilis           0.152         0.613           0.054       0.132           0.049
+E. lanceolatus         0.035         0.100           0.817       0.025           0.023
+T. blochii             0.100         0.146           0.009       0.712           0.033
+R. ancylostoma         0.019         0.022           0.001       0.029           0.929
+10-NN majority-vote agreement (non-parametric, no training): 0.864
+Most overlapping pair (k-NN): Caranx ignobilis <-> Trachinotus blochii (0.132 / 0.146)
+
+Caveat: 2D PCA/t-SNE/UMAP separation does NOT imply high classification accuracy.
+Next step if positive: frozen DINOv2 -> 384-d embedding -> Linear Classifier -> 5 species,
+measure Linear Probe Accuracy / Macro-F1 (with aquarium/location-group-aware train/test split (no aquarium in both train and test)).

@@ -1,0 +1,18 @@
+fastapi
+uvicorn[standard]
+python-multipart
+openai
+python-dotenv
+
+# --- DINOv2 feature analysis (analyze_dinov2.py) ---
+# Install torch/torchvision matching your CUDA, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+torch
+torchvision
+numpy
+pandas
+pillow
+scikit-learn
+matplotlib
+umap-learn
+open_clip_torch   # only for --aquarium-only scene filter

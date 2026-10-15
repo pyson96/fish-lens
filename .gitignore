@@ -1,0 +1,18 @@
+venv/
+.env
+__pycache__/
+dataset/
+
+# Heavy / regenerable analysis outputs
+*.npy
+*.zip
+output/**/test_predictions.csv
+
+# Per-photo metadata: iNaturalist usernames + GPS coordinates (personal data), also large
+output/**/metadata*.csv
+
+# Private aquarium inventory list (derived from the facility's species list)
+output/aquarium_species_inat.csv
+
+# Sample photos of unknown license
+/*.png

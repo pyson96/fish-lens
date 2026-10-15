@@ -1,0 +1,97 @@
+================================================
+
+DINOv2 Linear Probe - Aquarium species (iNaturalist captive)
+
+================================================
+
+Model:
+DINOv2 ViT-S/14 (frozen) -> 384-d CLS (L2-normalized) -> logistic regression (multinomial, class_weight=balanced)
+
+Data:
+10956 photos, 100 species, 53 families, 66-120 photos/species
+
+Split:
+5-fold StratifiedGroupKFold by aquarium/location group (2503 groups); C chosen by inner 3-fold grouped CV on the training fold only (grid [0.3, 1.0, 3.0, 10.0, 30.0])
+
+Results (mean ± std over folds)       split by AQUARIUM      | ref: split by observation
+  Top-1 accuracy                      0.844 ± 0.016          | 0.851 ± 0.005
+  Top-5 accuracy                      0.949 ± 0.008          | 0.952 ± 0.002
+  Macro-F1                            0.839 ± 0.017          | 0.847 ± 0.006
+  Balanced accuracy                   0.846 ± 0.017          | 0.851 ± 0.006
+  Family-level top-1                  0.893 ± 0.013          | 0.897 ± 0.005
+
+Chosen C per fold: [10.0, 10.0, 10.0, 10.0, 10.0]
+Share of errors within the same family: 0.316
+Species with F1 >= 0.9: 29, >= 0.8: 74, < 0.6: 2
+
+Worst 15 species (F1, top-1 recall, top-5 recall):
+  0.559  0.566  0.982  Hippocampus erectus [Syngnathidae]
+  0.584  0.617  0.983  Hippocampus reidi [Syngnathidae]
+  0.647  0.568  0.932  Maylandia estherae [Cichlidae]
+  0.667  0.653  0.903  Pseudobatos productus [Rhinobatidae]
+  0.703  0.674  0.895  Acanthurus dussumieri [Acanthuridae]
+  0.710  0.725  0.908  Acanthurus xanthopterus [Acanthuridae]
+  0.712  0.733  0.860  Dascyllus trimaculatus [Pomacentridae]
+  0.714  0.650  0.863  Pomacanthus semicirculatus [Pomacanthidae]
+  0.718  0.730  0.904  Gyrinocheilus aymonieri [Gyrinocheilidae]
+  0.719  0.701  0.983  Hippocampus abdominalis [Syngnathidae]
+  0.722  0.744  0.863  Labroides dimidiatus [Labridae]
+  0.727  0.732  0.866  Chrysiptera parasema [Pomacentridae]
+  0.736  0.798  0.975  Labidochromis caeruleus [Cichlidae]
+  0.742  0.825  0.967  Amphiprion ocellaris [Pomacentridae]
+  0.744  0.733  0.905  Zebrasoma scopas [Acanthuridae]
+
+Best 10 species (F1):
+  0.978  Pterois volitans [Scorpaenidae]
+  0.953  Pygocentrus nattereri [Serrasalmidae]
+  0.952  Hoplisoma sterbai [Callichthyidae]
+  0.949  Symphorichthys spilurus [Lutjanidae]
+  0.943  Leporinus fasciatus [Anostomidae]
+  0.940  Heteroconger hassi [Congridae]
+  0.939  Oxycirrhites typus [Cirrhitidae]
+  0.938  Aeoliscus strigatus [Centriscidae]
+  0.937  Pterapogon kauderni [Apogonidae]
+  0.937  Gorgasia preclara [Congridae]
+
+Top-20 confusions (fraction of true-species test photos predicted as the other species):
+  0.283  Hippocampus erectus [Syngnathidae] -> Hippocampus reidi [Syngnathidae]
+  0.226  Hippocampus reidi [Syngnathidae] -> Hippocampus erectus [Syngnathidae]
+  0.203  Maylandia estherae [Cichlidae] -> Labidochromis caeruleus [Cichlidae]
+  0.168  Acanthurus dussumieri [Acanthuridae] -> Acanthurus xanthopterus [Acanthuridae]
+  0.167  Amphiprion clarkii [Pomacentridae] -> Amphiprion ocellaris [Pomacentridae]
+  0.152  Amphiprion perideraion [Pomacentridae] -> Amphiprion frenatus [Pomacentridae]
+  0.137  Hippocampus abdominalis [Syngnathidae] -> Hippocampus reidi [Syngnathidae]
+  0.134  Himantura uarnak [Dasyatidae] -> Taeniurops meyeni [Dasyatidae]
+  0.133  Acanthurus xanthopterus [Acanthuridae] -> Acanthurus dussumieri [Acanthuridae]
+  0.120  Hippocampus abdominalis [Syngnathidae] -> Hippocampus erectus [Syngnathidae]
+  0.118  Labidochromis caeruleus [Cichlidae] -> Maylandia estherae [Cichlidae]
+  0.097  Pseudobatos productus [Rhinobatidae] -> Rhina ancylostomus [Rhinidae]
+  0.096  Hippocampus reidi [Syngnathidae] -> Hippocampus abdominalis [Syngnathidae]
+  0.093  Maylandia estherae [Cichlidae] -> Nimbochromis venustus [Cichlidae]
+  0.088  Hippocampus erectus [Syngnathidae] -> Hippocampus abdominalis [Syngnathidae]
+  0.086  Cichla ocellaris [Cichlidae] -> Gyrinocheilus aymonieri [Gyrinocheilidae]
+  0.080  Colossoma macropomum [Serrasalmidae] -> Arapaima gigas [Arapaimidae]
+  0.077  Pomacanthus semicirculatus [Pomacanthidae] -> Zebrasoma velifer [Acanthuridae]
+  0.076  Acanthurus olivaceus [Acanthuridae] -> Zebrasoma flavescens [Acanthuridae]
+  0.075  Amphiprion ocellaris [Pomacentridae] -> Amphiprion clarkii [Pomacentridae]
+
+Families with >= 3 species (mean F1):
+                n_species  mean_f1
+family                            
+Syngnathidae            4    0.699
+Pomacentridae           8    0.781
+Cichlidae               6    0.811
+Acanthuridae           13    0.812
+Labridae                4    0.829
+Pomacanthidae           6    0.850
+Chaetodontidae          4    0.917
+
+Output:
+  output/inat_aquarium/linear_probe/per_species_f1.png
+  output/inat_aquarium/linear_probe/confusion_matrix.png
+  output/inat_aquarium/linear_probe/per_species_results.csv
+  output/inat_aquarium/linear_probe/test_predictions.csv
+  output/inat_aquarium/linear_probe/folds_split_by_aquarium.csv
+  output/inat_aquarium/linear_probe/folds_split_by_observation.csv
+
+================================================

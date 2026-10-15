@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenAI Vision API Test</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #f5f6f8; color: #222; }
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px; }
+    h1 { font-size: 22px; margin: 0 0 20px; }
+    .card { background: #fff; border: 1px solid #e2e4e8; border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    input[type=text], select, textarea { width: 100%; padding: 9px 10px; font: inherit; border: 1px solid #cfd3d9; border-radius: 6px; }
+    textarea { min-height: 110px; resize: vertical; }
+    .row { display: flex; gap: 12px; margin-bottom: 14px; }
+    .row > div { flex: 1; }
+    #drop { border: 2px dashed #bfc5cd; border-radius: 8px; padding: 22px; text-align: center; color: #666; cursor: pointer; margin-top: 14px; }
+    #drop.over { border-color: #2f6fed; background: #eef3ff; }
+    #previews { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .thumb { position: relative; width: 110px; }
+    .thumb img { width: 110px; height: 110px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; display: block; }
+    .thumb span { font-size: 11px; color: #666; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thumb button { position: absolute; top: 4px; right: 4px; border: 0; border-radius: 50%; width: 22px; height: 22px; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; }
+    #send { margin-top: 14px; padding: 10px 22px; font: inherit; font-weight: 600; background: #2f6fed; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+    #send:disabled { background: #9db6ee; cursor: wait; }
+    #answer { white-space: pre-wrap; line-height: 1.6; }
+    #meta { font-size: 12px; color: #777; margin-top: 12px; }
+    .error { color: #c62828; }
+    @media (max-width: 560px) { .row { flex-direction: column; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>OpenAI Vision API Test</h1>
+
+  <form class="card" id="form">
+    <div class="row">
+      <div>
+        <label for="model">모델</label>
+        <input type="text" id="model" list="models" />
+        <datalist id="models">
+          <option value="gpt-4.1-mini"></option>
+          <option value="gpt-4.1"></option>
+          <option value="gpt-4o-mini"></option>
+          <option value="gpt-4o"></option>
+          <option value="gpt-5-mini"></option>
+          <option value="gpt-5"></option>
+        </datalist>
+      </div>
+      <div>
+        <label for="detail">이미지 detail</label>
+        <select id="detail">
+          <option value="auto">auto</option>
+          <option value="low">low (저렴/빠름)</option>
+          <option value="high">high (정밀)</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="prompt">프롬프트</label>
+    <textarea id="prompt" placeholder="예: 이 사진에 있는 물고기 종류를 알려줘"></textarea>
+
+    <div id="drop">이미지를 클릭해서 선택 / 드래그 앤 드롭 / Ctrl+V 붙여넣기</div>
+    <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden />
+    <div id="previews"></div>
+
+    <button type="submit" id="send">보내기</button>
+  </form>
+
+  <section class="card" id="result" hidden>
+    <div id="answer"></div>
+    <div id="meta"></div>
+  </section>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const files = [];
+
+  fetch("/api/config").then(r => r.json()).then(c => { $("model").value = c.default_model; });
+
+  function addFiles(list) {
+    for (const f of list) {
+      if (f.type.startsWith("image/")) files.push(f);
+    }
+    renderPreviews();
+  }
+
+  function renderPreviews() {
+    const box = $("previews");
+    box.replaceChildren();
+    files.forEach((f, i) => {
+      const div = document.createElement("div");
+      div.className = "thumb";
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(f);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      const name = document.createElement("span");
+      name.textContent = `${f.name} (${(f.size / 1024).toFixed(0)}KB)`;
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "×";
+      del.onclick = () => { files.splice(i, 1); renderPreviews(); };
+      div.append(img, name, del);
+      box.append(div);
+    });
+  }
+
+  const drop = $("drop");
+  drop.onclick = () => $("file").click();
+  $("file").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); };
+  document.addEventListener("paste", (e) => {
+    const pasted = [...e.clipboardData.items].filter(it => it.kind === "file").map(it => it.getAsFile());
+    if (pasted.length) addFiles(pasted);
+  });
+
+  $("form").onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append("prompt", $("prompt").value);
+    fd.append("model", $("model").value);
+    fd.append("detail", $("detail").value);
+    files.forEach(f => fd.append("images", f));
+
+    $("send").disabled = true;
+    $("send").textContent = "요청 중...";
+    $("result").hidden = false;
+    $("answer").className = "";
+    $("answer").textContent = "";
+    $("meta").textContent = "";
+    const started = performance.now();
+
+    try {
+      const res = await fetch("/api/chat", { method: "POST", body: fd });
+      const data = await res.json();
+      const secs = ((performance.now() - started) / 1000).toFixed(1);
+      if (!res.ok) {
+        $("answer").className = "error";
+        $("answer").textContent = data.error || JSON.stringify(data);
+        $("meta").textContent = `HTTP ${res.status} · ${secs}s`;
+        return;
+      }
+      $("answer").textContent = data.answer;
+      const u = data.usage || {};
+      $("meta").textContent =
+        `${data.model} · 이미지 ${data.image_count}장 · ${secs}s · tokens: in ${u.input_tokens ?? "-"} / out ${u.output_tokens ?? "-"} / total ${u.total_tokens ?? "-"}`;
+    } catch (err) {
+      $("answer").className = "error";
+      $("answer").textContent = "요청 실패: " + err;
+    } finally {
+      $("send").disabled = false;
+      $("send").textContent = "보내기";
+    }
+  };
+</script>
+</body>
+</html>

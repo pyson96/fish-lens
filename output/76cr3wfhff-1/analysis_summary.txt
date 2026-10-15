@@ -1,0 +1,121 @@
+========================================
+
+DINOv2 Fish Feature Analysis
+
+========================================
+
+Dataset:
+76cr3wfhff-1 (local RAR archives, 8 species, TIFF photos)
+
+Model:
+DINOv2 ViT-S/14 (frozen, official Meta weights, CLS token)
+
+Embedding:
+384 dimensions
+
+Images:
+
+Chanos chanos                : 240
+Eleutheronema tetradactylum  : 240
+Johnius trachycephalus       : 240
+Nibea albiflora              : 240
+Oreochromis mossambicus      : 240
+Oreochromis niloticus        : 240
+Rastrelliger faughni         : 240
+Upeneus moluccensis          : 240
+
+Total:
+1920
+
+Silhouette Score:
+0.23  (cosine, 384-d L2-normalized; euclidean=0.13)
+
+Most Similar Species:
+Chanos chanos <-> Johnius trachycephalus
+
+Cosine Similarity:
+0.90
+
+10-NN Agreement (no training):
+0.993  (same-species photos within 60s (same specimen) excluded)
+0.994  (STRICT: all photos from the same capture day excluded (any species))
+
+PCA Explained Variance:
+21.8%  (PC1 12.5% + PC2 9.3%)
+
+Output:
+
+output/76cr3wfhff-1/pca.png
+output/76cr3wfhff-1/tsne.png
+output/76cr3wfhff-1/umap.png
+output/76cr3wfhff-1/species_cosine_similarity.png
+
+========================================
+
+Details
+-------
+Device: CUDA
+Preprocessing: RGB -> Resize(256, bicubic) -> CenterCrop(224) -> ImageNet Normalize
+Sampling: up to 300 per species (equalized to the smallest class), numpy default_rng(seed=42)
+t-SNE: perplexity=30, metric=cosine, init=pca, random_state=42
+UMAP: {'n_neighbors': 15, 'min_dist': 0.1, 'metric': 'cosine', 'random_state': 42}
+
+Silhouette interpretation (reference only):
+  near 1  -> class features tend to be well separated
+  near 0  -> classes tend to overlap
+  negative -> samples likely mixed into other class regions
+  (Silhouette alone does not decide backbone suitability.)
+
+Per-species statistics (384-d normalized space):
+                    species   n  silhouette_mean  silhouette_neg_frac  mean_cos_to_own_centroid  spread(1-mean_cos)  nearest_centroid_is_own(LOO)
+              Chanos chanos 240            0.085                0.192                     0.848               0.152                         0.954
+Eleutheronema tetradactylum 240            0.285                0.000                     0.880               0.120                         1.000
+     Johnius trachycephalus 240            0.217                0.000                     0.872               0.128                         1.000
+            Nibea albiflora 240            0.236                0.000                     0.873               0.127                         1.000
+    Oreochromis mossambicus 240            0.213                0.054                     0.862               0.138                         0.963
+      Oreochromis niloticus 240            0.297                0.017                     0.874               0.126                         0.983
+       Rastrelliger faughni 240            0.263                0.000                     0.846               0.154                         1.000
+        Upeneus moluccensis 240            0.285                0.000                     0.866               0.134                         1.000
+
+Species mean-embedding cosine similarity:
+                   C. chanos  E. tetradactylum  J. trachycephalus  N. albiflora  O. mossambicus  O. niloticus  R. faughni  U. moluccensis
+C. chanos              1.000             0.896              0.899         0.898           0.793         0.782       0.825           0.796
+E. tetradactylum       0.896             1.000              0.885         0.845           0.715         0.754       0.719           0.771
+J. trachycephalus      0.899             0.885              1.000         0.892           0.742         0.708       0.787           0.791
+N. albiflora           0.898             0.845              0.892         1.000           0.870         0.845       0.801           0.848
+O. mossambicus         0.793             0.715              0.742         0.870           1.000         0.866       0.756           0.784
+O. niloticus           0.782             0.754              0.708         0.845           0.866         1.000       0.725           0.815
+R. faughni             0.825             0.719              0.787         0.801           0.756         0.725       1.000           0.779
+U. moluccensis         0.796             0.771              0.791         0.848           0.784         0.815       0.779           1.000
+
+Least similar pair: Johnius trachycephalus <-> Oreochromis niloticus (0.708)
+
+10-NN neighbor composition (row = query species; cosine; same-species photos within 60s (same specimen) excluded):
+                   C. chanos  E. tetradactylum  J. trachycephalus  N. albiflora  O. mossambicus  O. niloticus  R. faughni  U. moluccensis
+C. chanos              0.953             0.010              0.002         0.022           0.000         0.000       0.012           0.000
+E. tetradactylum       0.000             0.997              0.003         0.000           0.000         0.000       0.000           0.000
+J. trachycephalus      0.000             0.004              0.995         0.001           0.000         0.000       0.000           0.000
+N. albiflora           0.006             0.000              0.006         0.981           0.000         0.002       0.002           0.002
+O. mossambicus         0.000             0.000              0.000         0.003           0.949         0.048       0.000           0.000
+O. niloticus           0.000             0.000              0.000         0.003           0.016         0.981       0.000           0.000
+R. faughni             0.013             0.000              0.004         0.010           0.000         0.000       0.973           0.000
+U. moluccensis         0.000             0.000              0.001         0.006           0.000         0.001       0.000           0.992
+10-NN majority-vote agreement (non-parametric, no training): 0.993
+Most overlapping pair (k-NN): Oreochromis mossambicus <-> Oreochromis niloticus (0.048 / 0.016)
+
+10-NN neighbor composition (row = query species; cosine; STRICT: all photos from the same capture day excluded (any species)):
+                   C. chanos  E. tetradactylum  J. trachycephalus  N. albiflora  O. mossambicus  O. niloticus  R. faughni  U. moluccensis
+C. chanos              0.950             0.011              0.004         0.022           0.000         0.000       0.012           0.000
+E. tetradactylum       0.001             0.997              0.002         0.000           0.000         0.000       0.000           0.000
+J. trachycephalus      0.000             0.003              0.995         0.001           0.000         0.000       0.000           0.000
+N. albiflora           0.004             0.000              0.008         0.985           0.000         0.001       0.000           0.002
+O. mossambicus         0.000             0.000              0.000         0.002           0.956         0.042       0.000           0.000
+O. niloticus           0.000             0.000              0.000         0.003           0.015         0.982       0.000           0.000
+R. faughni             0.008             0.000              0.004         0.005           0.000         0.000       0.982           0.000
+U. moluccensis         0.000             0.000              0.001         0.007           0.000         0.001       0.000           0.991
+10-NN majority-vote agreement (non-parametric, no training): 0.994
+Most overlapping pair (k-NN): Oreochromis mossambicus <-> Oreochromis niloticus (0.042 / 0.015)
+
+Caveat: 2D PCA/t-SNE/UMAP separation does NOT imply high classification accuracy.
+Next step if positive: frozen DINOv2 -> 384-d embedding -> Linear Classifier -> 8 species,
+measure Linear Probe Accuracy / Macro-F1 (with capture-day-aware train/test split (no specimen/day in both train and test)).

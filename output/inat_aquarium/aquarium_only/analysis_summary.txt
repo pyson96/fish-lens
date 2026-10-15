@@ -1,0 +1,283 @@
+========================================
+
+DINOv2 Fish Feature Analysis
+
+========================================
+
+Dataset:
+iNaturalist captive=true photos (CC0/CC-BY/CC-BY-NC) of aquarium-list fish species with >= 50 captive CC observations
+
+Model:
+DINOv2 ViT-S/14 (frozen, official Meta weights, CLS token)
+
+Embedding:
+384 dimensions
+
+Images:
+
+100 species x 66-66 images (full list: output/inat_aquarium/aquarium_only/per_species_stats.csv)
+53 families
+
+Total:
+6600
+
+Silhouette Score:
+0.07  (cosine, 384-d L2-normalized; euclidean=0.04)
+
+Most Similar Species:
+Acanthurus dussumieri <-> Acanthurus xanthopterus
+
+Cosine Similarity:
+0.97
+
+10-NN Agreement (no training):
+0.757  (same-observation photos (same individual) excluded)
+0.743  (STRICT: all photos from the same aquarium/location group excluded (any species, 1816 groups))
+
+PCA Explained Variance:
+16.7%  (PC1 9.9% + PC2 6.8%)
+
+Output:
+
+output/inat_aquarium/aquarium_only/pca.png
+output/inat_aquarium/aquarium_only/tsne.png
+output/inat_aquarium/aquarium_only/umap.png
+output/inat_aquarium/aquarium_only/species_cosine_similarity.png
+
+========================================
+
+Details
+-------
+Device: CUDA
+Preprocessing (crop): RGB -> Resize(256, bicubic) -> CenterCrop(224) -> ImageNet Normalize
+Sampling: up to 300 per species (equalized to the smallest class), numpy default_rng(seed=42)
+t-SNE: perplexity=30, metric=cosine, init=pca, random_state=42
+UMAP: {'n_neighbors': 15, 'min_dist': 0.1, 'metric': 'cosine', 'random_state': 42}
+
+Scene filter (CLIP ViT-B-32 laion2b_s34b_b79k, species-agnostic zero-shot):
+scene                           aquarium  market_or_food  other  pond_or_farm
+species                                                                      
+Abudefduf vaigiensis                  67               2      0             1
+Acanthurus dussumieri                 94               0      1             1
+Acanthurus japonicus                  83               0      2             1
+Acanthurus leucosternon              116               0      1             3
+Acanthurus olivaceus                 117               0      1             2
+Acanthurus xanthopterus              116               0      0             4
+Acreichthys tomentosus                87               0      1             1
+Aeoliscus strigatus                  112               0      4             4
+Amphiprion clarkii                   120               0      0             0
+Amphiprion frenatus                  116               0      4             0
+Amphiprion ocellaris                 119               0      0             1
+Amphiprion perideraion                64               0      2             2
+Anableps anableps                     72               2      1            43
+Arapaima gigas                        76               4      2            38
+Astronotus ocellatus                 109               1      0            10
+Canthigaster valentini                83               1      1             3
+Caranx ignobilis                      83               7      4             8
+Carcharhinus melanopterus            117               0      0             3
+Carcharias taurus                    120               0      0             0
+Centropyge loriculus                 100               0      1             1
+Chaetodon auriga                     119               0      1             0
+Chaetodon lunula                     115               0      0             5
+Cheilinus undulatus                  115               2      1             2
+Chiloscyllium punctatum              103               4      2            10
+Choerodon fasciatus                   82               0      3             1
+Chromis viridis                      119               0      1             0
+Chrysiptera parasema                  81               1      1             1
+Cichla ocellaris                      71               2      0            10
+Colossoma macropomum                  76               5      2            37
+Crossocheilus oblongus                81               1      3             4
+Dascyllus trimaculatus                83               0      1             3
+Dawkinsia denisonii                  109               1      2             8
+Diodon holocanthus                   115               2      1             2
+Electrophorus electricus             106               0      6             8
+Epinephelus lanceolatus              106               2      2            10
+Gnathanodon speciosus                115               3      1             1
+Gomphosus varius                      95               0      1             1
+Gorgasia preclara                     87               3      3             2
+Gymnothorax favagineus               108               2      2             7
+Gyrinocheilus aymonieri              104               2      2            11
+Hemiscyllium ocellatum                98               5      5            12
+Hemitaurichthys polylepis            111               0      1             3
+Heniochus acuminatus                 120               0      0             0
+Heteroconger hassi                   108               1      4             7
+Himantura uarnak                      96               1      0            23
+Hippocampus abdominalis              111               0      3             6
+Hippocampus erectus                  111               0      7             2
+Hippocampus reidi                    113               2      3             2
+Holacanthus ciliaris                 119               0      1             0
+Hoplisoma sterbai                     69               0      2             5
+Labidochromis caeruleus              117               0      1             2
+Labroides dimidiatus                 115               0      1             2
+Leporinus fasciatus                  109               0      6             3
+Lutjanus kasmira                      76               0      1             4
+Maylandia estherae                   109               2      0             9
+Megalops atlanticus                  106               0      4            10
+Microcanthus strigatus                73               0      0             2
+Monodactylus argenteus               115               2      1             2
+Naso lituratus                       114               0      1             5
+Naso unicornis                       113               2      1             4
+Naso vlamingii                       118               0      2             0
+Nemateleotris magnifica              117               0      2             1
+Nimbochromis venustus                113               0      0             3
+Osphronemus goramy                    91               4      1            24
+Osteoglossum bicirrhosum              87               3      2            28
+Oxycirrhites typus                   116               0      2             2
+Oxydoras niger                       114               1      4             1
+Pangasianodon hypophthalmus          106               1      1            11
+Paracanthurus hepatus                116               0      1             3
+Paracheirodon innesi                 109               0      1            10
+Phenacogrammus interruptus           111               0      3             6
+Phractocephalus hemioliopterus       103               5      2            10
+Phyllopteryx taeniolatus             110               1      5             4
+Platax teira                         115               4      1             0
+Pomacanthus annularis                 97               0      1             0
+Pomacanthus maculosus                 87               0      0             0
+Pomacanthus paru                     109               0      3             8
+Pomacanthus semicirculatus           116               0      3             1
+Potamotrygon leopoldi                 90               2      2            26
+Potamotrygon motoro                   85               2      1            32
+Pseudobatos productus                 54               3      4            18
+Pterapogon kauderni                  119               0      0             1
+Pterois volitans                     117               1      2             0
+Pterophyllum scalare                 117               1      0             2
+Pygocentrus nattereri                105               0      3            12
+Rhina ancylostomus                   115               0      5             0
+Rhinecanthus aculeatus               113               0      1             6
+Rhinoptera bonasus                   110               1      1             8
+Siganus vulpinus                     119               0      0             1
+Sphaeramia nematoptera               118               0      0             2
+Stegostoma tigrinum                  108               2      4             6
+Symphorichthys spilurus              120               0      0             0
+Synchiropus splendidus               115               0      1             4
+Taeniurops meyeni                    107               2      0            11
+Trachinotus blochii                   67               7      0             2
+Trigonostigma heteromorpha           106               0      1            13
+Zebrasoma flavescens                 118               0      1             1
+Zebrasoma scopas                     104               1      0             1
+Zebrasoma velifer                    117               0      0             3
+Zebrasoma xanthurum                  120               0      0             0
+kept 10956 / excluded 265
+
+Silhouette interpretation (reference only):
+  near 1  -> class features tend to be well separated
+  near 0  -> classes tend to overlap
+  negative -> samples likely mixed into other class regions
+  (Silhouette alone does not decide backbone suitability.)
+
+Per-species statistics (384-d normalized space):
+output/inat_aquarium/aquarium_only/per_species_stats.csv
+
+Species mean-embedding cosine similarity: output/inat_aquarium/aquarium_only/species_cosine_similarity.csv
+Top-15 most similar species pairs (mean-embedding cosine):
+  0.965  Acanthurus dussumieri <-> Acanthurus xanthopterus  [Acanthuridae / Acanthuridae]
+  0.958  Hippocampus erectus <-> Hippocampus reidi  [Syngnathidae / Syngnathidae]
+  0.952  Labidochromis caeruleus <-> Maylandia estherae  [Cichlidae / Cichlidae]
+  0.947  Acanthurus japonicus <-> Acanthurus leucosternon  [Acanthuridae / Acanthuridae]
+  0.939  Pomacanthus paru <-> Pomacanthus semicirculatus  [Pomacanthidae / Pomacanthidae]
+  0.938  Acanthurus japonicus <-> Naso lituratus  [Acanthuridae / Acanthuridae]
+  0.938  Amphiprion clarkii <-> Amphiprion ocellaris  [Pomacentridae / Pomacentridae]
+  0.936  Hippocampus abdominalis <-> Hippocampus reidi  [Syngnathidae / Syngnathidae]
+  0.928  Naso unicornis <-> Naso vlamingii  [Acanthuridae / Acanthuridae]
+  0.920  Acanthurus dussumieri <-> Acanthurus olivaceus  [Acanthuridae / Acanthuridae]
+  0.920  Acanthurus xanthopterus <-> Naso unicornis  [Acanthuridae / Acanthuridae]
+  0.919  Acanthurus olivaceus <-> Acanthurus xanthopterus  [Acanthuridae / Acanthuridae]
+  0.919  Acanthurus dussumieri <-> Acanthurus japonicus  [Acanthuridae / Acanthuridae]
+  0.916  Pomacanthus maculosus <-> Pomacanthus semicirculatus  [Pomacanthidae / Pomacanthidae]
+  0.916  Acanthurus dussumieri <-> Naso lituratus  [Acanthuridae / Acanthuridae]
+
+Least similar pair: Himantura uarnak <-> Leporinus fasciatus (0.161)
+
+10-NN analysis (same-observation photos (same individual) excluded); full matrix: output/inat_aquarium/aquarium_only/knn_neighbor_composition_0.csv
+Top-20 confused directions (fraction of query species' neighbors that are the other species):
+  0.344  Hippocampus erectus [Syngnathidae] -> Hippocampus reidi [Syngnathidae]
+  0.339  Acanthurus xanthopterus [Acanthuridae] -> Acanthurus dussumieri [Acanthuridae]
+  0.250  Hippocampus abdominalis [Syngnathidae] -> Hippocampus reidi [Syngnathidae]
+  0.223  Labidochromis caeruleus [Cichlidae] -> Maylandia estherae [Cichlidae]
+  0.220  Maylandia estherae [Cichlidae] -> Labidochromis caeruleus [Cichlidae]
+  0.218  Amphiprion ocellaris [Pomacentridae] -> Amphiprion clarkii [Pomacentridae]
+  0.206  Carcharias taurus [Carchariidae] -> Carcharhinus melanopterus [Carcharhinidae]
+  0.206  Carcharhinus melanopterus [Carcharhinidae] -> Carcharias taurus [Carchariidae]
+  0.205  Hippocampus reidi [Syngnathidae] -> Hippocampus erectus [Syngnathidae]
+  0.177  Dawkinsia denisonii [Cyprinidae] -> Crossocheilus oblongus [Cyprinidae]
+  0.173  Amphiprion frenatus [Pomacentridae] -> Amphiprion clarkii [Pomacentridae]
+  0.167  Amphiprion clarkii [Pomacentridae] -> Amphiprion ocellaris [Pomacentridae]
+  0.162  Hippocampus reidi [Syngnathidae] -> Hippocampus abdominalis [Syngnathidae]
+  0.162  Crossocheilus oblongus [Cyprinidae] -> Dawkinsia denisonii [Cyprinidae]
+  0.159  Potamotrygon motoro [Potamotrygonidae] -> Potamotrygon leopoldi [Potamotrygonidae]
+  0.159  Acanthurus dussumieri [Acanthuridae] -> Acanthurus xanthopterus [Acanthuridae]
+  0.153  Taeniurops meyeni [Dasyatidae] -> Himantura uarnak [Dasyatidae]
+  0.150  Himantura uarnak [Dasyatidae] -> Taeniurops meyeni [Dasyatidae]
+  0.148  Pomacanthus semicirculatus [Pomacanthidae] -> Pomacanthus paru [Pomacanthidae]
+  0.147  Amphiprion perideraion [Pomacentridae] -> Amphiprion frenatus [Pomacentridae]
+Worst 15 species by 10-NN majority-vote agreement:
+  0.333  Acanthurus olivaceus [Acanthuridae]
+  0.348  Acanthurus xanthopterus [Acanthuridae]
+  0.424  Hippocampus erectus [Syngnathidae]
+  0.515  Maylandia estherae [Cichlidae]
+  0.530  Hippocampus reidi [Syngnathidae]
+  0.545  Naso vlamingii [Acanthuridae]
+  0.545  Amphiprion perideraion [Pomacentridae]
+  0.545  Zebrasoma scopas [Acanthuridae]
+  0.576  Chrysiptera parasema [Pomacentridae]
+  0.576  Amphiprion ocellaris [Pomacentridae]
+  0.591  Naso unicornis [Acanthuridae]
+  0.606  Pseudobatos productus [Rhinobatidae]
+  0.621  Pomacanthus semicirculatus [Pomacanthidae]
+  0.621  Trachinotus blochii [Trachinotidae]
+  0.621  Potamotrygon motoro [Potamotrygonidae]
+Species with agreement >= 0.9: 12 / 100; >= 0.7: 67; < 0.5: 3
+Family-level agreement (species vote mapped to family): 0.836
+Neighbors in the same family: 0.725
+Share of species-level errors that stay within the same family: 0.324
+10-NN majority-vote agreement (non-parametric, no training): 0.757
+Most overlapping pair (k-NN): Hippocampus erectus <-> Hippocampus reidi (0.344 / 0.205)
+
+10-NN analysis (STRICT: all photos from the same aquarium/location group excluded (any species, 1816 groups)); full matrix: output/inat_aquarium/aquarium_only/knn_neighbor_composition_1.csv
+Top-20 confused directions (fraction of query species' neighbors that are the other species):
+  0.342  Hippocampus erectus [Syngnathidae] -> Hippocampus reidi [Syngnathidae]
+  0.326  Acanthurus xanthopterus [Acanthuridae] -> Acanthurus dussumieri [Acanthuridae]
+  0.252  Hippocampus abdominalis [Syngnathidae] -> Hippocampus reidi [Syngnathidae]
+  0.235  Maylandia estherae [Cichlidae] -> Labidochromis caeruleus [Cichlidae]
+  0.226  Labidochromis caeruleus [Cichlidae] -> Maylandia estherae [Cichlidae]
+  0.220  Amphiprion ocellaris [Pomacentridae] -> Amphiprion clarkii [Pomacentridae]
+  0.217  Carcharias taurus [Carchariidae] -> Carcharhinus melanopterus [Carcharhinidae]
+  0.205  Carcharhinus melanopterus [Carcharhinidae] -> Carcharias taurus [Carchariidae]
+  0.202  Hippocampus reidi [Syngnathidae] -> Hippocampus erectus [Syngnathidae]
+  0.182  Amphiprion frenatus [Pomacentridae] -> Amphiprion clarkii [Pomacentridae]
+  0.180  Dawkinsia denisonii [Cyprinidae] -> Crossocheilus oblongus [Cyprinidae]
+  0.176  Crossocheilus oblongus [Cyprinidae] -> Dawkinsia denisonii [Cyprinidae]
+  0.171  Hippocampus reidi [Syngnathidae] -> Hippocampus abdominalis [Syngnathidae]
+  0.168  Amphiprion clarkii [Pomacentridae] -> Amphiprion ocellaris [Pomacentridae]
+  0.162  Potamotrygon motoro [Potamotrygonidae] -> Potamotrygon leopoldi [Potamotrygonidae]
+  0.162  Acanthurus dussumieri [Acanthuridae] -> Acanthurus xanthopterus [Acanthuridae]
+  0.161  Pomacanthus semicirculatus [Pomacanthidae] -> Pomacanthus paru [Pomacanthidae]
+  0.155  Amphiprion perideraion [Pomacentridae] -> Amphiprion frenatus [Pomacentridae]
+  0.153  Taeniurops meyeni [Dasyatidae] -> Himantura uarnak [Dasyatidae]
+  0.144  Naso lituratus [Acanthuridae] -> Acanthurus japonicus [Acanthuridae]
+Worst 15 species by 10-NN majority-vote agreement:
+  0.318  Acanthurus olivaceus [Acanthuridae]
+  0.348  Acanthurus xanthopterus [Acanthuridae]
+  0.348  Maylandia estherae [Cichlidae]
+  0.424  Hippocampus erectus [Syngnathidae]
+  0.485  Pseudobatos productus [Rhinobatidae]
+  0.500  Zebrasoma scopas [Acanthuridae]
+  0.515  Amphiprion perideraion [Pomacentridae]
+  0.515  Hippocampus reidi [Syngnathidae]
+  0.515  Chrysiptera parasema [Pomacentridae]
+  0.530  Pomacanthus semicirculatus [Pomacanthidae]
+  0.545  Colossoma macropomum [Serrasalmidae]
+  0.576  Naso unicornis [Acanthuridae]
+  0.576  Naso vlamingii [Acanthuridae]
+  0.591  Amphiprion ocellaris [Pomacentridae]
+  0.591  Amphiprion frenatus [Pomacentridae]
+Species with agreement >= 0.9: 11 / 100; >= 0.7: 66; < 0.5: 5
+Family-level agreement (species vote mapped to family): 0.825
+Neighbors in the same family: 0.716
+Share of species-level errors that stay within the same family: 0.319
+10-NN majority-vote agreement (non-parametric, no training): 0.743
+Most overlapping pair (k-NN): Hippocampus erectus <-> Hippocampus reidi (0.342 / 0.202)
+
+Caveat: 2D PCA/t-SNE/UMAP separation does NOT imply high classification accuracy.
+Next step if positive: frozen DINOv2 -> 384-d embedding -> Linear Classifier -> 100 species,
+measure Linear Probe Accuracy / Macro-F1 (with aquarium/location-group-aware train/test split (no aquarium in both train and test)).

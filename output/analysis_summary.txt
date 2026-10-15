@@ -1,0 +1,91 @@
+========================================
+
+DINOv2 Fish Feature Analysis
+
+========================================
+
+Dataset:
+Fish4Knowledge (official GT/RECOG, clusters 01-04)
+
+Model:
+DINOv2 ViT-S/14 (frozen, official Meta weights, CLS token)
+
+Embedding:
+384 dimensions
+
+Images:
+
+Dascyllus reticulatus        : 300
+Plectroglyphidodon dickii    : 300
+Chromis chrysura             : 300
+Amphiprion clarkii           : 300
+
+Total:
+1200
+
+Silhouette Score:
+0.13  (cosine, 384-d L2-normalized; euclidean=0.07)
+
+Most Similar Species:
+Plectroglyphidodon dickii <-> Chromis chrysura
+
+Cosine Similarity:
+0.90
+
+10-NN Agreement (no training):
+0.947  (same-trajectory neighbors excluded)
+
+PCA Explained Variance:
+23.7%  (PC1 13.7% + PC2 10.0%)
+
+Output:
+
+output/pca.png
+output/tsne.png
+output/umap.png
+output/species_cosine_similarity.png
+
+========================================
+
+Details
+-------
+Device: CUDA
+Preprocessing: RGB -> Resize(256, bicubic) -> CenterCrop(224) -> ImageNet Normalize
+Sampling: up to 300 per species (equalized to the smallest class), numpy default_rng(seed=42)
+t-SNE: perplexity=30, metric=cosine, init=pca, random_state=42
+UMAP: {'n_neighbors': 15, 'min_dist': 0.1, 'metric': 'cosine', 'random_state': 42}
+
+Silhouette interpretation (reference only):
+  near 1  -> class features tend to be well separated
+  near 0  -> classes tend to overlap
+  negative -> samples likely mixed into other class regions
+  (Silhouette alone does not decide backbone suitability.)
+
+Per-species statistics (384-d normalized space):
+                  species   n  silhouette_mean  silhouette_neg_frac  mean_cos_to_own_centroid  spread(1-mean_cos)  nearest_centroid_is_own(LOO)
+    Dascyllus reticulatus 300            0.006                0.403                     0.731               0.269                         0.873
+Plectroglyphidodon dickii 300            0.074                0.123                     0.768               0.232                         0.947
+         Chromis chrysura 300            0.179                0.020                     0.800               0.200                         0.900
+       Amphiprion clarkii 300            0.247                0.060                     0.766               0.234                         0.947
+
+Species mean-embedding cosine similarity:
+                D. reticulatus  P. dickii  C. chrysura  A. clarkii
+D. reticulatus           1.000      0.876        0.896       0.743
+P. dickii                0.876      1.000        0.901       0.732
+C. chrysura              0.896      0.901        1.000       0.710
+A. clarkii               0.743      0.732        0.710       1.000
+
+Least similar pair: Chromis chrysura <-> Amphiprion clarkii (0.710)
+
+10-NN neighbor composition (row = query species; cosine; same-trajectory neighbors excluded):
+                D. reticulatus  P. dickii  C. chrysura  A. clarkii
+D. reticulatus           0.829      0.055        0.102       0.014
+P. dickii                0.040      0.849        0.110       0.001
+C. chrysura              0.022      0.054        0.924       0.000
+A. clarkii               0.012      0.009        0.005       0.973
+10-NN majority-vote agreement (non-parametric, no training): 0.947
+Most overlapping pair (k-NN): Plectroglyphidodon dickii <-> Chromis chrysura (0.110 / 0.054)
+
+Caveat: 2D PCA/t-SNE/UMAP separation does NOT imply high classification accuracy.
+Next step if positive: frozen DINOv2 -> 384-d embedding -> Linear Classifier -> 4 species,
+measure Linear Probe Accuracy / Macro-F1 (with trajectory (trackingID)-aware train/test split).
